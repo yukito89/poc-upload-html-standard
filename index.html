@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <title>設計書アップロード</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="container">
+            <h1>PoC検証（gpt-4o-mini）</h1>
+
+            <input type="file" id="fileInput" /><br /><br />
+            <button id="uploadBtn">アップロードして生成</button>
+
+            <p id="status"></p>
+        </div>
+
+        <script>
+            const fileInput = document.querySelector("#fileInput");
+            const status = document.querySelector("#status");
+            const uploadBtn = document.querySelector("#uploadBtn");
+
+            uploadBtn.addEventListener("click", async () => {
+                const file = fileInput.files[0];
+
+                if (!file) {
+                    status.textContent = "ファイルを選択してください";
+                    return;
+                }
+
+                uploadBtn.disabled = true;
+                status.textContent = "生成中...";
+
+                const formData = new FormData();
+                formData.append("documentFile", file);
+
+                // ===== Azure Functions用 =====
+                const endpoint =
+                    "https://poc-functions-standard-hcftbba4cbh6ajhg.swedencentral-01.azurewebsites.net/api/upload";
+
+                // ===== ローカル開発用 =====
+                // const endpoint = "http://localhost:7071/api/upload";
+
+                try {
+                    const res = await fetch(endpoint, {
+                        method: "POST",
+                        body: formData,
+                    });
+
+                    if (!res.ok) {
+                        status.textContent = `エラー: ${res.status}`;
+                        uploadBtn.disabled = false;
+                        return;
+                    }
+
+                    const blob = await res.blob();
+
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "TestSpecification.zip";
+                    a.click();
+                    URL.revokeObjectURL(url);
+
+                    status.textContent = "完了しました";
+                } catch (err) {
+                    status.textContent = `通信エラー: ${err.message}`;
+                } finally {
+                    uploadBtn.disabled = false;
+                }
+            });
+        </script>
+    </body>
+</html>
